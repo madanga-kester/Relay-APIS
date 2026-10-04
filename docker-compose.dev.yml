@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: relay
+      POSTGRES_USER: relay_app
+      POSTGRES_PASSWORD: relay_dev_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - relay-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay_app -d relay"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  relay-postgres-data:
