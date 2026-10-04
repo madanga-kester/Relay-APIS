@@ -14,7 +14,7 @@ public sealed class CampaignsController(ICampaignService campaigns) : Controller
     [AllowAnonymous]
     public Task<PageResult<CampaignResponse>> List([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default) => campaigns.ListAsync(new PageRequest(page, pageSize), cancellationToken);
 
-   
+
     [HttpGet("mine")]
     [Authorize(Roles = "Advertiser,Admin")]
     public Task<PageResult<CampaignResponse>> Mine([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default) => campaigns.MineAsync(new PageRequest(page, pageSize), cancellationToken);
@@ -31,7 +31,8 @@ public sealed class CampaignsController(ICampaignService campaigns) : Controller
     [Authorize(Roles = "Advertiser,Admin")]
     public async Task<ActionResult<CampaignResponse>> Update(Guid id, UpdateCampaignRequest request, CancellationToken cancellationToken) => await campaigns.UpdateAsync(id, request, cancellationToken) is { } campaign ? Ok(campaign) : NotFound();
 
-    [HttpPost("{id:guid}/actions/{action}")]
+    [HttpPost("{id:guid}/actions/{operation}")]
     [Authorize(Roles = "Advertiser,Admin")]
-    public async Task<ActionResult<CampaignResponse>> Transition(Guid id, string action, CancellationToken cancellationToken) => await campaigns.TransitionAsync(id, action, cancellationToken) is { } campaign ? Ok(campaign) : NotFound();
+    public async Task<ActionResult<CampaignResponse>> Transition(Guid id, string operation, CancellationToken cancellationToken) => await campaigns.TransitionAsync(id, operation, cancellationToken) is { } campaign ? Ok(campaign) : NotFound();
+
 }

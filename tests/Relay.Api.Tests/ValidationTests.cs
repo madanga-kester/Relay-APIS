@@ -16,7 +16,7 @@ public sealed class ValidationTests
     [Fact]
     public void CampaignRejectsBudgetBelowMaximumCommunityCost()
     {
-        var errors = RequestValidators.Validate(new CreateCampaignRequest("Campaign", "Description", "Ad", "https://example.com", 2m, 10m, 6, "Category", "Kenya"));
+        var errors = RequestValidators.Validate(new CreateCampaignRequest("Campaign", "Campaign", "Description", "Ad", "https://example.com", ["WhatsApp"], 1, int.MaxValue, "Category", "Kenya", 7, 6, 2m, 10m, DateOnly.FromDateTime(DateTime.UtcNow), DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))));
         Assert.Contains(errors, error => error.Contains("budget", StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -22,8 +22,8 @@ public sealed record CreateCampaignRequest(string Name, string AdvertiserName, s
     string[] Platforms, int MinimumAudience, int MaximumAudience, string Category, string Location, int DurationDays,
     int MaximumCommunities, decimal Cpc, decimal Budget, DateOnly StartDate, DateOnly EndDate)
 {
-    public CreateCampaignRequest(string name, string description, string advertisement, string destinationUrl, decimal cpc, decimal budget, int maximumCommunities, string category, string location)
-        : this(name, name, description, advertisement, destinationUrl, ["WhatsApp"], 1, int.MaxValue, category, location, 7, maximumCommunities, cpc, budget, DateOnly.FromDateTime(DateTime.UtcNow), DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))) { }
+    internal CreateCampaignRequest(string name, string description, string advertisement, string destinationUrl, decimal cpc, decimal budget, int maximumCommunities, string category, string location)
+      : this(name, name, description, advertisement, destinationUrl, ["WhatsApp"], 1, int.MaxValue, category, location, 7, maximumCommunities, cpc, budget, DateOnly.FromDateTime(DateTime.UtcNow), DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))) { }
 }
 public sealed record UpdateCampaignRequest(string Name, string AdvertiserName, string Description, string Advertisement, string DestinationUrl,
     string[] Platforms, int MinimumAudience, int MaximumAudience, string Category, string Location, int DurationDays,
@@ -39,7 +39,8 @@ public sealed record CommunityResponse(Guid Id, Guid OwnerId, string Name, Commu
 
 public sealed record ApplyToCampaignRequest(Guid CampaignId, Guid CommunityId);
 public sealed record ReviewApplicationRequest(bool Accept, string? Reason);
-public sealed record ApplicationResponse(Guid Id, Guid CampaignId, Guid CommunityId, Guid CommunityOwnerId, decimal Cpc, ApplicationStatus Status, PlacementResponse? Placement);
+public sealed record ApplicationCommunityResponse(string Name, CommunityPlatform Platform, int Members, string Category, string Location, VerificationStatus VerificationStatus, string AudienceDescription, string? CommunityLink);
+public sealed record ApplicationResponse(Guid Id, Guid CampaignId, Guid CommunityId, Guid CommunityOwnerId, decimal Cpc, ApplicationStatus Status, PlacementResponse? Placement, ApplicationCommunityResponse? Community = null);
 public sealed record PlacementResponse(Guid Id, Guid CampaignId, Guid CommunityId, Guid CommunityOwnerId, string TrackingId, PlacementStatus Status);
 public sealed record TrackingClickResponse(string ClickId, ClickQualification Qualification, string? RejectionReason, string DestinationUrl);
 
