@@ -55,7 +55,7 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
             $"{community.Name} applied to the campaign."));
 
         await db.SaveChangesAsync(cancellationToken);
-        return ToResponse(application, community);
+        return ToResponse(application, community, campaign);
     }
 
     public async Task<PageResult<ApplicationResponse>> MineAsync(PageRequest page, CancellationToken cancellationToken)
@@ -92,10 +92,19 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
             .Where(x => communityIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, cancellationToken);
 
+        // Attach the campaign summary too, so a community owner can still see the details of a
+        // campaign they were accepted into after it is paused or completed.
+        var campaignIds = items.Select(x => x.CampaignId).Distinct().ToList();
+        var campaignLookup = await db.Campaigns
+            .AsNoTracking()
+            .Where(x => campaignIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
         var responses = items.Select(application =>
         {
             communityLookup.TryGetValue(application.CommunityId, out var community);
-            return ToResponse(application, community);
+            campaignLookup.TryGetValue(application.CampaignId, out var campaign);
+            return ToResponse(application, community, campaign);
         }).ToList();
 
         return new PageResult<ApplicationResponse>(responses, page.SafePage, page.SafePageSize, total);
@@ -103,57 +112,72 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
 
     public async Task<ApplicationResponse?> ReviewAsync(Guid id, ReviewApplicationRequest request, CancellationToken cancellationToken)
     {
-        var application = await db.Applications
-            .Include(x => x.Placement)
-            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-        if (application is null)
+        // The database retries transient failures, so a user-started transaction must run inside
+        // an execution strategy that can repeat the whole unit of work.
+        var strategy = db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync<ApplicationResponse?>(async () =>
         {
-            return null;
-        }
+            db.ChangeTracker.Clear();
 
-        var campaign = await db.Campaigns.SingleAsync(x => x.Id == application.CampaignId, cancellationToken);
+            var application = await db.Applications
+                .Include(x => x.Placement)
+                .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-        if (currentUser.Role != UserRole.Admin && currentUser.UserId != campaign.AdvertiserId)
-        {
-            throw new ForbiddenOperationException("Only the campaign owner or an admin can review applications.");
-        }
-
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-
-        if (request.Accept)
-        {
-            var accepted = await db.Applications.CountAsync(
-                x => x.CampaignId == campaign.Id && x.Status == ApplicationStatus.Accepted,
-                cancellationToken);
-
-            if (accepted >= campaign.MaximumCommunities)
+            if (application is null)
             {
-                throw new ConflictException("Community limit reached.");
+                return null;
             }
 
-            application.Accept(clock.UtcNow);
-        }
-        else
-        {
-            application.Reject(clock.UtcNow, request.Reason);
-        }
+            var campaign = await db.Campaigns.SingleAsync(x => x.Id == application.CampaignId, cancellationToken);
 
-        db.ActivityEvents.Add(new ActivityEvent(
-            request.Accept ? "Application approved" : "Application rejected",
-            "CampaignApplication",
-            application.Id,
-            campaign.Name,
-            currentUser.UserId,
-            request.Reason ?? "Application reviewed."));
+            if (currentUser.Role != UserRole.Admin && currentUser.UserId != campaign.AdvertiserId)
+            {
+                throw new ForbiddenOperationException("Only the campaign owner or an admin can review applications.");
+            }
 
-        await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
-        return ToResponse(application);
+            if (request.Accept)
+            {
+                var accepted = await db.Applications.CountAsync(
+                    x => x.CampaignId == campaign.Id && x.Status == ApplicationStatus.Accepted,
+                    cancellationToken);
+
+                if (accepted >= campaign.MaximumCommunities)
+                {
+                    throw new ConflictException("Community limit reached.");
+                }
+
+                application.Accept(clock.UtcNow);
+
+                // The placement is created with its Id already set, so EF would treat it as an
+                // existing row and try to UPDATE it. Adding it explicitly makes EF INSERT it.
+                if (application.Placement is not null)
+                {
+                    db.Placements.Add(application.Placement);
+                }
+            }
+            else
+            {
+                application.Reject(clock.UtcNow, request.Reason);
+            }
+
+            db.ActivityEvents.Add(new ActivityEvent(
+                request.Accept ? "Application approved" : "Application rejected",
+                "CampaignApplication",
+                application.Id,
+                campaign.Name,
+                currentUser.UserId,
+                request.Reason ?? "Application reviewed."));
+
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return ToResponse(application);
+        });
     }
 
-    private static ApplicationResponse ToResponse(CampaignApplication application, Community? community = null) => new(
+    private static ApplicationResponse ToResponse(CampaignApplication application, Community? community = null, Campaign? campaign = null) => new(
         application.Id,
         application.CampaignId,
         application.CommunityId,
@@ -179,5 +203,18 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
                 community.Location,
                 community.VerificationStatus,
                 community.AudienceDescription,
-                community.CommunityLink));
+                community.CommunityLink),
+        campaign is null
+            ? null
+            : new ApplicationCampaignResponse(
+                campaign.Name,
+                campaign.AdvertiserName,
+                campaign.Advertisement,
+                campaign.DestinationUrl,
+                campaign.DurationDays,
+                campaign.StartDate,
+                campaign.EndDate,
+                campaign.Cpc,
+                campaign.Budget,
+                campaign.Status));
 }

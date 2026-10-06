@@ -19,6 +19,10 @@ public sealed class CampaignsController(ICampaignService campaigns) : Controller
     [Authorize(Roles = "Advertiser,Admin")]
     public Task<PageResult<CampaignResponse>> Mine([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default) => campaigns.MineAsync(new PageRequest(page, pageSize), cancellationToken);
 
+    [HttpGet("performance")]
+    [Authorize(Roles = "Advertiser")]
+    public Task<IReadOnlyList<CampaignPerformanceResponse>> Performance(CancellationToken cancellationToken = default) => campaigns.PerformanceAsync(cancellationToken);
+
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
     public async Task<ActionResult<CampaignResponse>> Get(Guid id, CancellationToken cancellationToken) => await campaigns.GetAsync(id, cancellationToken) is { } campaign ? Ok(campaign) : NotFound();

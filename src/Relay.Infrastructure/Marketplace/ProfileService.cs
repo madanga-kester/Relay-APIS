@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Relay.Application.Common;
 using Relay.Application.Contracts;
 using Relay.Application.Services;
+using Relay.Application.Validation;
 using Relay.Domain.Entities;
 using Relay.Infrastructure.Persistence;
 
@@ -19,6 +20,9 @@ public sealed class ProfileService(RelayDbContext db, ICurrentUser currentUser, 
     public async Task<ProfileResponse> SaveAsync(SaveProfileRequest request, CancellationToken cancellationToken)
     {
         if (currentUser.UserId is not Guid userId) throw new UnauthorizedAccessException();
+        var errors = RequestValidators.Validate(request);
+        if (errors.Count > 0) throw new ValidationFailureException(errors);
+
         var profile = await db.UserProfiles.SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken);
         if (profile is null) { profile = new UserProfile(userId); db.UserProfiles.Add(profile); }
         profile.Update(request.BusinessName, request.Industry, request.Website, request.Location, request.PrimaryGoal, request.PhoneNumber, request.AvatarKey, request.OnboardingCompleted, request.CommunityName, request.CommunityPlatform, request.CommunityMembers, request.CommunityCategory, clock.UtcNow);

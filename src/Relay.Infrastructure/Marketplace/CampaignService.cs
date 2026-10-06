@@ -35,7 +35,38 @@ public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser,
         return new PageResult<CampaignResponse>(items.Select(ToResponse).ToList(), page.SafePage, page.SafePageSize, total);
     }
 
-    
+    public async Task<IReadOnlyList<CampaignPerformanceResponse>> PerformanceAsync(CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not Guid advertiserId) throw new ForbiddenOperationException("Authentication is required.");
+        var campaignIds = db.Campaigns.AsNoTracking().Where(x => x.AdvertiserId == advertiserId).Select(x => x.Id);
+        var clicks = await db.ClickEvents.AsNoTracking()
+            .Where(x => campaignIds.Contains(x.CampaignId))
+            .GroupBy(x => x.CampaignId)
+            .Select(group => new
+            {
+                CampaignId = group.Key,
+                Qualified = group.Count(x => x.Qualification == ClickQualification.Qualified),
+                Rejected = group.Count(x => x.Qualification == ClickQualification.Rejected)
+            })
+            .ToListAsync(cancellationToken);
+        var money = await db.LedgerEntries.AsNoTracking()
+            .Where(x => campaignIds.Contains(x.CampaignId) && x.Type == LedgerEntryType.QualifiedClick)
+            .GroupBy(x => x.CampaignId)
+            .Select(group => new
+            {
+                CampaignId = group.Key,
+                Spend = group.Sum(x => x.AdvertiserCharge),
+                Earnings = group.Sum(x => x.CommunityOwnerEarning),
+                Fees = group.Sum(x => x.PlatformFee)
+            })
+            .ToListAsync(cancellationToken);
+        var moneyByCampaign = money.ToDictionary(x => x.CampaignId);
+        return clicks.Select(item =>
+        {
+            moneyByCampaign.TryGetValue(item.CampaignId, out var amounts);
+            return new CampaignPerformanceResponse(item.CampaignId, item.Qualified, item.Rejected, amounts?.Spend ?? 0m, amounts?.Earnings ?? 0m, amounts?.Fees ?? 0m);
+        }).ToList();
+    }
     public async Task<CampaignResponse> CreateAsync(CreateCampaignRequest request, CancellationToken cancellationToken)
     {
         EnsureRole(UserRole.Advertiser);

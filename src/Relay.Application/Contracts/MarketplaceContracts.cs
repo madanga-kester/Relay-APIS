@@ -40,7 +40,11 @@ public sealed record CommunityResponse(Guid Id, Guid OwnerId, string Name, Commu
 public sealed record ApplyToCampaignRequest(Guid CampaignId, Guid CommunityId);
 public sealed record ReviewApplicationRequest(bool Accept, string? Reason);
 public sealed record ApplicationCommunityResponse(string Name, CommunityPlatform Platform, int Members, string Category, string Location, VerificationStatus VerificationStatus, string AudienceDescription, string? CommunityLink);
-public sealed record ApplicationResponse(Guid Id, Guid CampaignId, Guid CommunityId, Guid CommunityOwnerId, decimal Cpc, ApplicationStatus Status, PlacementResponse? Placement, ApplicationCommunityResponse? Community = null);
+
+
+public sealed record ApplicationCampaignResponse(string Name, string AdvertiserName, string Advertisement, string DestinationUrl, int DurationDays, DateOnly StartDate, DateOnly EndDate, decimal Cpc, decimal Budget, CampaignStatus Status);
+public sealed record ApplicationResponse(Guid Id, Guid CampaignId, Guid CommunityId, Guid CommunityOwnerId, decimal Cpc, ApplicationStatus Status, PlacementResponse? Placement, ApplicationCommunityResponse? Community = null, ApplicationCampaignResponse? Campaign = null);
+
 public sealed record PlacementResponse(Guid Id, Guid CampaignId, Guid CommunityId, Guid CommunityOwnerId, string TrackingId, PlacementStatus Status);
 public sealed record TrackingClickResponse(string ClickId, ClickQualification Qualification, string? RejectionReason, string DestinationUrl);
 
@@ -60,3 +64,5 @@ public sealed record ChangePlacementStatusRequest(PlacementStatus Status);
 public sealed record AdminOverviewResponse(int TotalUsers, int Advertisers, int CommunityOwners, int Campaigns, int ActiveCampaigns, int Communities, int ActiveCommunities, int Applications, int PendingApplications, int Placements, int ActivePlacements, int QualifiedClicks, decimal AdvertiserSpend, decimal CommunityOwnerEarnings, decimal PlatformRevenue);
 public sealed record AdminReportResponse(DateTimeOffset? From, DateTimeOffset? To, int Campaigns, int ActiveCampaigns, int Communities, int ActiveCommunities, int Applications, int Placements, int QualifiedClicks, decimal AdvertiserSpend, decimal CommunityOwnerEarnings, decimal PlatformRevenue, decimal ReconciliationDelta);
 public sealed record AdminHealthResponse(int ActiveCampaigns, int ActivePlacements, int QualifiedClicksLast24Hours, int FailedEventsLast24Hours, int ActivityEventsLast24Hours, bool FinancialsReconciled);
+
+public sealed record CampaignPerformanceResponse(Guid CampaignId, int QualifiedClicks, int RejectedClicks, decimal AdvertiserSpend, decimal CommunityOwnerEarnings, decimal PlatformFees);

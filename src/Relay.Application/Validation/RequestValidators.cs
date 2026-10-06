@@ -49,6 +49,34 @@ public static class RequestValidators
         return errors;
     }
 
+    private static readonly Regex Phone = new("^[0-9+()\\-\\s]{7,32}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    public static IReadOnlyList<string> Validate(SaveProfileRequest request)
+    {
+        var errors = new List<string>();
+        errors.AddRange(ValidateOptionalText(request.BusinessName, "Business name", 160));
+        errors.AddRange(ValidateOptionalText(request.Industry, "Industry", 120));
+        errors.AddRange(ValidateOptionalText(request.Location, "Location", 180));
+        errors.AddRange(ValidateOptionalText(request.PrimaryGoal, "Primary goal", 240));
+        errors.AddRange(ValidateOptionalText(request.AvatarKey, "Avatar", 300));
+        errors.AddRange(ValidateOptionalText(request.CommunityName, "Community name", 160));
+        errors.AddRange(ValidateOptionalText(request.CommunityPlatform, "Community platform", 40));
+        errors.AddRange(ValidateOptionalText(request.CommunityCategory, "Community category", 120));
+        if (!string.IsNullOrWhiteSpace(request.Website) && !IsAcceptableWebsite(request.Website.Trim())) errors.Add("Website must be a valid HTTP or HTTPS address.");
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber) && !Phone.IsMatch(request.PhoneNumber.Trim())) errors.Add("Phone number may contain only digits, spaces, +, ( ), and - and must be 7 to 32 characters.");
+        if (request.CommunityMembers is < 0 or > 2_000_000_000) errors.Add("Community size is out of range.");
+        return errors;
+    }
+
+    private static List<string> ValidateOptionalText(string? value, string label, int max) => value is not null && value.Trim().Length > max ? [$"{label} must be at most {max} characters."] : [];
+
+    private static bool IsAcceptableWebsite(string value)
+    {
+        if (value.Length > 300 || value.Any(char.IsWhiteSpace)) return false;
+        if (!value.Contains(':')) return true;
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme is ("http" or "https");
+    }
+
     private static List<string> ValidateText(string value, string label, int min, int max) => value.Trim().Length < min || value.Trim().Length > max ? [$"{label} must be between {min} and {max} characters."] : [];
     private static bool IsStrongPassword(string password) => password.Length >= 12 && password.Any(char.IsUpper) && password.Any(char.IsLower) && password.Any(char.IsDigit) && password.Any(ch => !char.IsLetterOrDigit(ch));
 }
