@@ -35,6 +35,18 @@ public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser,
         return new PageResult<CampaignResponse>(items.Select(ToResponse).ToList(), page.SafePage, page.SafePageSize, total);
     }
 
+    public async Task<IReadOnlyList<BillingActivityResponse>> BillingActivityAsync(CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not Guid advertiserId) throw new ForbiddenOperationException("Authentication is required.");
+        var campaignIds = db.Campaigns.AsNoTracking().Where(x => x.AdvertiserId == advertiserId).Select(x => x.Id);
+        return await (from entry in db.LedgerEntries.AsNoTracking()
+                      join click in db.ClickEvents.AsNoTracking() on entry.ClickEventId equals click.Id
+                      where campaignIds.Contains(entry.CampaignId) && entry.Type == LedgerEntryType.QualifiedClick
+                      orderby entry.CreatedAt descending
+                      select new BillingActivityResponse(entry.CampaignId, click.TrackingId, entry.CreatedAt, entry.AdvertiserCharge, entry.PlatformFee))
+            .Take(8)
+            .ToListAsync(cancellationToken);
+    }
     public async Task<IReadOnlyList<CampaignPerformanceResponse>> PerformanceAsync(CancellationToken cancellationToken)
     {
         if (currentUser.UserId is not Guid advertiserId) throw new ForbiddenOperationException("Authentication is required.");
@@ -67,6 +79,9 @@ public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser,
             return new CampaignPerformanceResponse(item.CampaignId, item.Qualified, item.Rejected, amounts?.Spend ?? 0m, amounts?.Earnings ?? 0m, amounts?.Fees ?? 0m);
         }).ToList();
     }
+
+  
+
     public async Task<CampaignResponse> CreateAsync(CreateCampaignRequest request, CancellationToken cancellationToken)
     {
         EnsureRole(UserRole.Advertiser);

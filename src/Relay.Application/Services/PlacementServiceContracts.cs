@@ -9,4 +9,6 @@ public interface IPlacementService
     Task<PlacementResponse?> ActivateAsync(Guid id, CancellationToken cancellationToken);
     Task<PlacementResponse?> CompleteAsync(Guid id, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<EarningResponse>> EarningsAsync(CancellationToken cancellationToken);
+
 }

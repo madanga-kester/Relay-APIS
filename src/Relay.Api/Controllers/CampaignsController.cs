@@ -18,10 +18,15 @@ public sealed class CampaignsController(ICampaignService campaigns) : Controller
     [HttpGet("mine")]
     [Authorize(Roles = "Advertiser,Admin")]
     public Task<PageResult<CampaignResponse>> Mine([FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default) => campaigns.MineAsync(new PageRequest(page, pageSize), cancellationToken);
+    [HttpGet("billing-activity")]
+    [Authorize(Roles = "Advertiser")]
+    public Task<IReadOnlyList<BillingActivityResponse>> BillingActivity(CancellationToken cancellationToken = default) => campaigns.BillingActivityAsync(cancellationToken);
 
     [HttpGet("performance")]
     [Authorize(Roles = "Advertiser")]
     public Task<IReadOnlyList<CampaignPerformanceResponse>> Performance(CancellationToken cancellationToken = default) => campaigns.PerformanceAsync(cancellationToken);
+
+
 
     [HttpGet("{id:guid}")]
     [AllowAnonymous]

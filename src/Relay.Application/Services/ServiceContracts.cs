@@ -18,7 +18,11 @@ public interface IAuthenticationService
 public interface ICampaignService
 {
     Task<PageResult<CampaignResponse>> ListAsync(PageRequest page, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<BillingActivityResponse>> BillingActivityAsync(CancellationToken cancellationToken);
     Task<PageResult<CampaignResponse>> MineAsync(PageRequest page, CancellationToken cancellationToken);
+
+    
     Task<IReadOnlyList<CampaignPerformanceResponse>> PerformanceAsync(CancellationToken cancellationToken);
     Task<CampaignResponse> CreateAsync(CreateCampaignRequest request, CancellationToken cancellationToken);
     Task<CampaignResponse?> UpdateAsync(Guid id, UpdateCampaignRequest request, CancellationToken cancellationToken);

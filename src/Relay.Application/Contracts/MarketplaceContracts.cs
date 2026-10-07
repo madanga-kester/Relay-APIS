@@ -66,3 +66,7 @@ public sealed record AdminReportResponse(DateTimeOffset? From, DateTimeOffset? T
 public sealed record AdminHealthResponse(int ActiveCampaigns, int ActivePlacements, int QualifiedClicksLast24Hours, int FailedEventsLast24Hours, int ActivityEventsLast24Hours, bool FinancialsReconciled);
 
 public sealed record CampaignPerformanceResponse(Guid CampaignId, int QualifiedClicks, int RejectedClicks, decimal AdvertiserSpend, decimal CommunityOwnerEarnings, decimal PlatformFees);
+public sealed record EarningResponse(Guid PayoutId, Guid CampaignId, Guid PlacementId, decimal Amount, PayoutStatus Status, int QualifiedClicks, DateTimeOffset UpdatedAt);
+
+
+public sealed record BillingActivityResponse(Guid CampaignId, string TrackingId, DateTimeOffset CreatedAt, decimal AdvertiserCharge, decimal PlatformFee);

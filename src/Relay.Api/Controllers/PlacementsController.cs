@@ -16,7 +16,9 @@ public sealed class PlacementsController(IPlacementService placements) : Control
     [Authorize(Roles = "Advertiser,CommunityOwner,Admin")]
     public Task<PageResult<PlacementResponse>> Mine([FromQuery] int page = 1, [FromQuery] int pageSize = 100, CancellationToken cancellationToken = default) => placements.MineAsync(new PageRequest(page, pageSize), cancellationToken);
 
-
+    [HttpGet("earnings")]
+    [Authorize(Roles = "CommunityOwner")]
+    public Task<IReadOnlyList<EarningResponse>> Earnings(CancellationToken cancellationToken = default) => placements.EarningsAsync(cancellationToken);
 
     [HttpPost("{id:guid}/activate")]
     [Authorize(Roles = "CommunityOwner,Admin")]

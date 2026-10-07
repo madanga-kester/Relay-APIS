@@ -29,7 +29,26 @@ public sealed class PlacementService(RelayDbContext db, ICurrentUser currentUser
     public Task<PlacementResponse?> CompleteAsync(Guid id, CancellationToken cancellationToken) => TransitionAsync(id, activate: false, cancellationToken);
 
 
-
+    public async Task<IReadOnlyList<EarningResponse>> EarningsAsync(CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not Guid ownerId) throw new ForbiddenOperationException("Authentication is required.");
+        var payouts = await db.PayoutRecords.AsNoTracking()
+            .Where(x => x.CommunityOwnerId == ownerId)
+            .OrderByDescending(x => x.UpdatedAt)
+            .ToListAsync(cancellationToken);
+        var placementIds = payouts.Select(x => x.PlacementId).ToList();
+        var clickCounts = await db.LedgerEntries.AsNoTracking()
+            .Where(x => placementIds.Contains(x.PlacementId) && x.Type == LedgerEntryType.QualifiedClick)
+            .GroupBy(x => x.PlacementId)
+            .Select(group => new { PlacementId = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+        var countByPlacement = clickCounts.ToDictionary(x => x.PlacementId, x => x.Count);
+        return payouts.Select(payout =>
+        {
+            countByPlacement.TryGetValue(payout.PlacementId, out var count);
+            return new EarningResponse(payout.Id, payout.CampaignId, payout.PlacementId, payout.Amount, payout.Status, count, payout.UpdatedAt);
+        }).ToList();
+    }
 
     private async Task<PlacementResponse?> TransitionAsync(Guid id, bool activate, CancellationToken cancellationToken)
     {
