@@ -83,3 +83,8 @@ public interface IAdminReportingService
     Task<AdminReportResponse> GetReportAsync(DateTimeOffset? from, DateTimeOffset? toDate, CancellationToken cancellationToken);
     Task<AdminHealthResponse> GetHealthAsync(CancellationToken cancellationToken);
 }
+
+public interface IActivityFeedService
+{
+    Task<IReadOnlyList<ActivityFeedItemResponse>> GetAsync(int limit, CancellationToken cancellationToken);
+}

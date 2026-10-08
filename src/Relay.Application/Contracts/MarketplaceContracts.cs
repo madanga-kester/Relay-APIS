@@ -68,5 +68,5 @@ public sealed record AdminHealthResponse(int ActiveCampaigns, int ActivePlacemen
 public sealed record CampaignPerformanceResponse(Guid CampaignId, int QualifiedClicks, int RejectedClicks, decimal AdvertiserSpend, decimal CommunityOwnerEarnings, decimal PlatformFees);
 public sealed record EarningResponse(Guid PayoutId, Guid CampaignId, Guid PlacementId, decimal Amount, PayoutStatus Status, int QualifiedClicks, DateTimeOffset UpdatedAt);
 
-
+public sealed record ActivityFeedItemResponse(Guid Id, string EventType, string EntityType, Guid EntityId, string EntityName, string Detail, DateTimeOffset CreatedAt);
 public sealed record BillingActivityResponse(Guid CampaignId, string TrackingId, DateTimeOffset CreatedAt, decimal AdvertiserCharge, decimal PlatformFee);
