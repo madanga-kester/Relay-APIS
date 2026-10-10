@@ -57,8 +57,9 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
             campaign.AdvertiserId,
             "application",
             "New application",
-            $"{community.Name} applied to \"{campaign.Name}\".",
-            "/campaign-owner/applications"));
+                        $"{community.Name} applied to \"{campaign.Name}\".",
+                       "/campaign-owner/applications",
+            community.Platform.ToString()));
 
         await db.SaveChangesAsync(cancellationToken);
         return ToResponse(application, community, campaign);
@@ -176,10 +177,12 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
                 currentUser.UserId,
                 request.Reason ?? "Application reviewed."));
 
-            var reviewedCommunityName = await db.Communities
-    .Where(x => x.Id == application.CommunityId)
-    .Select(x => x.Name)
-    .SingleOrDefaultAsync(cancellationToken) ?? "Your community";
+            var reviewedCommunity = await db.Communities
+            .Where(x => x.Id == application.CommunityId)
+            .Select(x => new { x.Name, x.Platform })
+            .SingleOrDefaultAsync(cancellationToken);
+            var reviewedCommunityName = reviewedCommunity?.Name ?? "Your community";
+            var reviewedCommunityPlatform = reviewedCommunity?.Platform.ToString();
 
             db.UserNotifications.Add(request.Accept
                 ? new UserNotification(
@@ -187,7 +190,8 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
                     "application",
                     "Application accepted",
                     $"{reviewedCommunityName} was accepted into \"{campaign.Name}\". Post the ad to start earning.",
-                    "/community-owner/accepted-campaigns")
+                                        "/community-owner/accepted-campaigns",
+                    reviewedCommunityPlatform)
                 : new UserNotification(
                     application.CommunityOwnerId,
                     "application",
@@ -195,7 +199,8 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
                     string.IsNullOrWhiteSpace(request.Reason)
                         ? $"{reviewedCommunityName} was not selected for \"{campaign.Name}\"."
                         : $"{reviewedCommunityName} was not selected for \"{campaign.Name}\": {request.Reason}",
-                    "/community-owner/campaigns"));
+                                       "/community-owner/campaigns",
+                    reviewedCommunityPlatform));
 
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);

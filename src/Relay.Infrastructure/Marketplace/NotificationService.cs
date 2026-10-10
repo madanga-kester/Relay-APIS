@@ -25,8 +25,7 @@ public sealed class NotificationService(RelayDbContext db, ICurrentUser currentU
             .ToListAsync(cancellationToken);
 
         var responses = items
-            .Select(x => new NotificationResponse(x.Id, x.Type, x.Title, x.Body, x.Href, x.ReadAt is not null, x.CreatedAt))
-            .ToList();
+            .Select(x => new NotificationResponse(x.Id, x.Type, x.Title, x.Body, x.Href, x.ReadAt is not null, x.CreatedAt, x.Platform)).ToList();
 
         return new PageResult<NotificationResponse>(responses, page.SafePage, page.SafePageSize, total);
     }

@@ -30,7 +30,8 @@ public sealed record UpdateCampaignRequest(string Name, string AdvertiserName, s
     int MaximumCommunities, decimal Cpc, decimal Budget, DateOnly StartDate, DateOnly EndDate);
 public sealed record CampaignResponse(Guid Id, Guid AdvertiserId, string Name, string AdvertiserName, string Description, string Advertisement,
     string DestinationUrl, IReadOnlyCollection<string> Platforms, int MinimumAudience, int MaximumAudience, string Category, string Location,
-    int DurationDays, int MaximumCommunities, decimal Cpc, decimal Budget, DateOnly StartDate, DateOnly EndDate, CampaignStatus Status);
+     int DurationDays, int MaximumCommunities, decimal Cpc, decimal Budget, DateOnly StartDate, DateOnly EndDate, CampaignStatus Status,
+    int AcceptedCommunities = 0, decimal CommunityOwnerCpc = 0m);
 
 public sealed record CreateCommunityRequest(string Name, CommunityPlatform Platform, int Members, string Category, string Location,
     string? CommunityLink, string AudienceDescription, string? VerificationEvidenceKey);

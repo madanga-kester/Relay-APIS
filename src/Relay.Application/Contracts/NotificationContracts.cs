@@ -8,8 +8,9 @@ namespace Relay.Application.Contracts
         string Title,
         string Body,
         string? Href,
-        bool Read,
-        DateTimeOffset CreatedAt);
+               bool Read,
+        DateTimeOffset CreatedAt,
+        string? Platform = null);
 }
 
 namespace Relay.Application.Services

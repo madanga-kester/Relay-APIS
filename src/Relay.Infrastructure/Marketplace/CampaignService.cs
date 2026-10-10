@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Relay.Application.Common;
 using Relay.Application.Contracts;
+using Relay.Application.Financial;
 using Relay.Application.Services;
 using Relay.Application.Validation;
 using Relay.Domain.Entities;
@@ -9,7 +10,7 @@ using Relay.Infrastructure.Persistence;
 
 namespace Relay.Infrastructure.Marketplace;
 
-public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser, IClock clock) : ICampaignService
+public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser, IClock clock, IFinancialCalculator financials) : ICampaignService
 {
     public async Task<PageResult<CampaignResponse>> ListAsync(PageRequest page, CancellationToken cancellationToken)
     {
@@ -22,7 +23,8 @@ public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser,
         }
         var total = await query.CountAsync(cancellationToken);
         var items = await query.OrderByDescending(x => x.CreatedAt).Skip((page.SafePage - 1) * page.SafePageSize).Take(page.SafePageSize).ToListAsync(cancellationToken);
-        return new PageResult<CampaignResponse>(items.Select(ToResponse).ToList(), page.SafePage, page.SafePageSize, total);
+        var acceptedCounts = await AcceptedCountsAsync(items.Select(x => x.Id).ToList(), cancellationToken);
+        return new PageResult<CampaignResponse>(items.Select(x => ToResponse(x, acceptedCounts.GetValueOrDefault(x.Id))).ToList(), page.SafePage, page.SafePageSize, total);
     }
 
 
@@ -32,7 +34,8 @@ public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser,
         var query = db.Campaigns.AsNoTracking().Where(x => x.AdvertiserId == advertiserId);
         var total = await query.CountAsync(cancellationToken);
         var items = await query.OrderByDescending(x => x.CreatedAt).Skip((page.SafePage - 1) * page.SafePageSize).Take(page.SafePageSize).ToListAsync(cancellationToken);
-        return new PageResult<CampaignResponse>(items.Select(ToResponse).ToList(), page.SafePage, page.SafePageSize, total);
+        var acceptedCounts = await AcceptedCountsAsync(items.Select(x => x.Id).ToList(), cancellationToken);
+        return new PageResult<CampaignResponse>(items.Select(x => ToResponse(x, acceptedCounts.GetValueOrDefault(x.Id))).ToList(), page.SafePage, page.SafePageSize, total);
     }
 
     public async Task<IReadOnlyList<BillingActivityResponse>> BillingActivityAsync(CancellationToken cancellationToken)
@@ -114,7 +117,8 @@ public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser,
         var campaign = await db.Campaigns.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (campaign is null) return null;
         EnsureCanView(campaign);
-        return ToResponse(campaign);
+        var acceptedCounts = await AcceptedCountsAsync([campaign.Id], cancellationToken);
+        return ToResponse(campaign, acceptedCounts.GetValueOrDefault(campaign.Id));
     }
 
     public async Task<CampaignResponse?> TransitionAsync(Guid id, string action, CancellationToken cancellationToken)
@@ -147,5 +151,14 @@ public sealed class CampaignService(RelayDbContext db, ICurrentUser currentUser,
     private void EnsureRole(UserRole required) { if (!currentUser.IsInRole(required) || currentUser.UserId is null) throw new ForbiddenOperationException($"{required} access is required."); }
     private void EnsureOwnerOrAdmin(Guid ownerId) { if (currentUser.Role != UserRole.Admin && currentUser.UserId != ownerId) throw new ForbiddenOperationException("You do not have access to this campaign."); }
     private void EnsureCanView(Campaign campaign) { if (currentUser.Role != UserRole.Admin && campaign.Status is not (CampaignStatus.Published or CampaignStatus.Active) && currentUser.UserId != campaign.AdvertiserId) throw new ForbiddenOperationException("You do not have access to this campaign."); }
-    private static CampaignResponse ToResponse(Campaign campaign) => new(campaign.Id, campaign.AdvertiserId, campaign.Name, campaign.AdvertiserName, campaign.Description, campaign.Advertisement, campaign.DestinationUrl, campaign.Platforms, campaign.MinimumAudience, campaign.MaximumAudience, campaign.Category, campaign.Location, campaign.DurationDays, campaign.MaximumCommunities, campaign.Cpc, campaign.Budget, campaign.StartDate, campaign.EndDate, campaign.Status);
+    private async Task<Dictionary<Guid, int>> AcceptedCountsAsync(List<Guid> campaignIds, CancellationToken cancellationToken)
+    {
+        return await db.Applications.AsNoTracking()
+            .Where(x => campaignIds.Contains(x.CampaignId) && x.Status == ApplicationStatus.Accepted)
+            .GroupBy(x => x.CampaignId)
+            .Select(group => new { CampaignId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(x => x.CampaignId, x => x.Count, cancellationToken);
+    }
+
+    private CampaignResponse ToResponse(Campaign campaign, int acceptedCommunities = 0) => new(campaign.Id, campaign.AdvertiserId, campaign.Name, campaign.AdvertiserName, campaign.Description, campaign.Advertisement, campaign.DestinationUrl, campaign.Platforms, campaign.MinimumAudience, campaign.MaximumAudience, campaign.Category, campaign.Location, campaign.DurationDays, campaign.MaximumCommunities, campaign.Cpc, campaign.Budget, campaign.StartDate, campaign.EndDate, campaign.Status, acceptedCommunities, financials.Calculate(campaign.Cpc, campaign.Budget, 0).CommunityOwnerCpc);
 }
