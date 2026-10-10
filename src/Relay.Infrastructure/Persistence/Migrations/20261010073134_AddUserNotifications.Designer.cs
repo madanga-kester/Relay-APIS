@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Relay.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Relay.Infrastructure.Persistence;
 namespace Relay.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RelayDbContext))]
-    partial class RelayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261010073134_AddUserNotifications")]
+    partial class AddUserNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -844,34 +847,6 @@ namespace Relay.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "CreatedAt");
 
                     b.ToTable("user_notifications", (string)null);
-                });
-
-            modelBuilder.Entity("Relay.Domain.Entities.UserPreference", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ValuesJson")
-                        .IsRequired()
-                        .HasMaxLength(8000)
-                        .HasColumnType("character varying(8000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("user_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Relay.Domain.Entities.UserProfile", b =>

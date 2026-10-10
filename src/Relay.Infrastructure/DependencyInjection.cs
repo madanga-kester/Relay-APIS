@@ -22,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<ITrackingService, TrackingService>();
         services.AddScoped<IPlacementService, PlacementService>();
         services.AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IPreferencesService, PreferencesService>();
         services.AddScoped<IActivityFeedService, ActivityFeedService>();
         services.AddScoped<IAdminOperationsService, AdminOperationsService>();
         services.AddScoped<IAdminOverviewService, AdminOverviewService>();

@@ -23,6 +23,11 @@ public sealed class RelayDbContext(DbContextOptions<RelayDbContext> options) : D
     public DbSet<PayoutRecord> PayoutRecords => Set<PayoutRecord>();
     public DbSet<AdminNotification> AdminNotifications => Set<AdminNotification>();
     public DbSet<AdminSetting> AdminSettings => Set<AdminSetting>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+
+
+    
+    public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,6 +42,8 @@ public sealed class RelayDbContext(DbContextOptions<RelayDbContext> options) : D
         ConfigureLedger(modelBuilder);
         ConfigureActivity(modelBuilder);
         ConfigureResetTokens(modelBuilder);
+        ConfigureNotifications(modelBuilder);
+        ConfigureUserPreferences(modelBuilder);
         modelBuilder.ConfigureProfilesAndAdminRecords();
     }
 
@@ -185,4 +192,28 @@ public sealed class RelayDbContext(DbContextOptions<RelayDbContext> options) : D
         entity.Property(x => x.CodeHash).HasMaxLength(128).IsRequired();
         entity.HasIndex(x => x.UserId);
     }
+
+
+
+    private static void ConfigureNotifications(ModelBuilder builder)
+    {
+        var entity = builder.Entity<UserNotification>();
+        entity.ToTable("user_notifications");
+        entity.HasKey(x => x.Id);
+        entity.Property(x => x.Type).HasMaxLength(32).IsRequired();
+        entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+        entity.Property(x => x.Body).HasMaxLength(1000).IsRequired();
+        entity.Property(x => x.Href).HasMaxLength(200);
+        entity.HasIndex(x => new { x.UserId, x.CreatedAt });
+    }
+
+    private static void ConfigureUserPreferences(ModelBuilder builder)
+    {
+        var entity = builder.Entity<UserPreference>();
+        entity.ToTable("user_preferences");
+        entity.HasKey(x => x.Id);
+        entity.Property(x => x.ValuesJson).HasMaxLength(8000).IsRequired();
+        entity.HasIndex(x => x.UserId).IsUnique();
+    }
+
 }

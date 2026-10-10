@@ -53,6 +53,12 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
             campaign.Name,
             currentUser.UserId,
             $"{community.Name} applied to the campaign."));
+        db.UserNotifications.Add(new UserNotification(
+            campaign.AdvertiserId,
+            "application",
+            "New application",
+            $"{community.Name} applied to \"{campaign.Name}\".",
+            "/campaign-owner/applications"));
 
         await db.SaveChangesAsync(cancellationToken);
         return ToResponse(application, community, campaign);
@@ -169,6 +175,27 @@ public sealed class ApplicationService(RelayDbContext db, ICurrentUser currentUs
                 campaign.Name,
                 currentUser.UserId,
                 request.Reason ?? "Application reviewed."));
+
+            var reviewedCommunityName = await db.Communities
+    .Where(x => x.Id == application.CommunityId)
+    .Select(x => x.Name)
+    .SingleOrDefaultAsync(cancellationToken) ?? "Your community";
+
+            db.UserNotifications.Add(request.Accept
+                ? new UserNotification(
+                    application.CommunityOwnerId,
+                    "application",
+                    "Application accepted",
+                    $"{reviewedCommunityName} was accepted into \"{campaign.Name}\". Post the ad to start earning.",
+                    "/community-owner/accepted-campaigns")
+                : new UserNotification(
+                    application.CommunityOwnerId,
+                    "application",
+                    "Application declined",
+                    string.IsNullOrWhiteSpace(request.Reason)
+                        ? $"{reviewedCommunityName} was not selected for \"{campaign.Name}\"."
+                        : $"{reviewedCommunityName} was not selected for \"{campaign.Name}\": {request.Reason}",
+                    "/community-owner/campaigns"));
 
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);

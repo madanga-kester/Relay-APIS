@@ -64,6 +64,21 @@ public sealed class PlacementService(RelayDbContext db, ICurrentUser currentUser
         else placement.Complete(clock.UtcNow);
         db.ActivityEvents.Add(new ActivityEvent(activate ? "Placement activated" : "Placement completed", "Placement", placement.Id, placement.TrackingId, currentUser.UserId, $"Placement status changed to {placement.Status}."));
         if (activate && campaign.Status == CampaignStatus.Active) db.ActivityEvents.Add(new ActivityEvent("Campaign Activated", "Campaign", campaign.Id, campaign.Name, currentUser.UserId, "First active placement confirmed."));
+
+        var communityName = await db.Communities
+    .Where(x => x.Id == placement.CommunityId)
+    .Select(x => x.Name)
+    .SingleOrDefaultAsync(cancellationToken) ?? "A community";
+
+        db.UserNotifications.Add(new UserNotification(
+            campaign.AdvertiserId,
+            "placement",
+            activate ? "Your ad is live" : "Placement completed",
+            activate
+                ? $"{communityName} confirmed your ad for \"{campaign.Name}\" is live."
+                : $"{communityName} marked the placement for \"{campaign.Name}\" as completed.",
+            "/campaign-owner/placements"));
+
         await db.SaveChangesAsync(cancellationToken);
         return ToResponse(placement);
     }
